@@ -32,8 +32,7 @@ class SparkAPI(BaseGPTAPI):
 
     def ask(self, msg: str) -> str:
         message = [self._default_system_msg(), self._user_msg(msg)]
-        rsp = self.completion(message)
-        return rsp
+        return self.completion(message)
 
     async def aask(self, msg: str, system_msgs: Optional[list[str]] = None) -> str:
         if system_msgs:
@@ -88,9 +87,9 @@ class GetMessageFromWeb:
             date = format_date_time(mktime(now.timetuple()))
 
             # 拼接字符串
-            signature_origin = "host: " + self.host + "\n"
-            signature_origin += "date: " + date + "\n"
-            signature_origin += "GET " + self.path + " HTTP/1.1"
+            signature_origin = f"host: {self.host}" + "\n"
+            signature_origin += f"date: {date}" + "\n"
+            signature_origin += f"GET {self.path} HTTP/1.1"
 
             # 进行hmac-sha256进行加密
             signature_sha = hmac.new(self.api_secret.encode('utf-8'), signature_origin.encode('utf-8'),
@@ -108,10 +107,7 @@ class GetMessageFromWeb:
                 "date": date,
                 "host": self.host
             }
-            # 拼接鉴权参数，生成url
-            url = self.spark_url + '?' + urlencode(v)
-            # 此处打印出建立连接时候的url,参考本demo的时候可取消上方打印的注释，比对相同参数时生成的url与自己代码生成的url是否一致
-            return url
+            return f'{self.spark_url}?{urlencode(v)}'
 
     def __init__(self, text):
         self.text = text
@@ -151,16 +147,12 @@ class GetMessageFromWeb:
     # 处理请求数据
     def gen_params(self):
 
-        data = {
-            "header": {
-                "app_id": self.spark_appid,
-                "uid": "1234"
-            },
+        return {
+            "header": {"app_id": self.spark_appid, "uid": "1234"},
             "parameter": {
                 "chat": {
                     # domain为必传参数
                     "domain": self.domain,
-
                     # 以下为可微调，非必传参数
                     # 注意：官方建议，temperature和top_k修改一个即可
                     "max_tokens": 2048,  # 默认2048，模型回答的tokens的最大长度，即允许它输出文本的最长字数
@@ -168,13 +160,8 @@ class GetMessageFromWeb:
                     "top_k": 4,  # 取值为[1，6],默认为4。从k个候选中随机选择一个（非等概率）
                 }
             },
-            "payload": {
-                "message": {
-                    "text": self.text
-                }
-            }
+            "payload": {"message": {"text": self.text}},
         }
-        return data
 
     def send(self, ws, *args):
         data = json.dumps(self.gen_params())
