@@ -19,11 +19,7 @@ def extract_python_code(code: str):
     pattern = r'(#\s[^\n]*)\n(.*?)(?=\n\s*#|$)'
     matches = re.findall(pattern, code, re.DOTALL)
 
-    # Extract the last code block when encountering the same comment.
-    unique_comments = {}
-    for comment, code_block in matches:
-        unique_comments[comment] = code_block
-
+    unique_comments = dict(matches)
     # concatenate into functional form
     result_code = '\n'.join([f"{comment}\n{code_block}" for comment, code_block in unique_comments.items()])
     header_code = code[:code.find("#")]
@@ -85,10 +81,10 @@ class OpenCodeInterpreter(object):
                     and item['language'] == language]
         else:
             raise ValueError(f"Unexpect message format in query_respond: {query_respond[1].keys()}")
-        # add indent.
-        indented_code_str = textwrap.indent("\n".join(code), ' ' * 4)
         # Return the code after deduplication.
         if language == "python":
+            # add indent.
+            indented_code_str = textwrap.indent("\n".join(code), ' ' * 4)
             return extract_python_code(function_format.format(function_name=function_name, code=indented_code_str))
 
 
@@ -99,8 +95,7 @@ def gen_query(func: Callable, args, kwargs) -> str:
     # Get the signature of the wrapped function and the assignment of the input parameters as part of the query.
     bound_args = signature.bind(*args, **kwargs)
     bound_args.apply_defaults()
-    query = f"{desc}, {bound_args.arguments}, If you must use a third-party package, use the most popular ones, for example: pandas, numpy, ta, ..."
-    return query
+    return f"{desc}, {bound_args.arguments}, If you must use a third-party package, use the most popular ones, for example: pandas, numpy, ta, ..."
 
 
 def gen_template_fun(func: Callable) -> str:
@@ -121,9 +116,7 @@ class OpenInterpreterDecorator(object):
         # is faild plan?
         func_code = OpenCodeInterpreter.extract_function(rsp, 'function')
         # If there is no more than 1 '\n', the plan execution fails.
-        if isinstance(func_code, str) and func_code.count('\n') <= 1:
-            return True
-        return False
+        return isinstance(func_code, str) and func_code.count('\n') <= 1
 
     def _check_respond(self, query: str, interpreter: OpenCodeInterpreter, respond: List[Dict], max_try: int = 3):
         for _ in range(max_try):
